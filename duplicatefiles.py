@@ -40,8 +40,34 @@ def getAllDuplicateFiles(URL):
 	outputJson = request.json()
 
 	output = []
+
 	for page in outputJson["query"]["pages"]:
 		output.append(outputJson["query"]["pages"][page]["title"])
+			
+	try:
+		DFCONTINUE = outputJson["continue"]["gaicontinue"]
+	except:
+		DFCONTINUE = ''
+
+	while (DFCONTINUE):
+		PARAMS = {
+		"action": "query",
+		"generator": "allimages",
+		"prop": "duplicatefiles",
+		"format": "json",
+		"gaicontinue": DFCONTINUE
+		}
+
+		request = session.get(url=URL, params=PARAMS, verify=False)
+		outputJson = request.json()
+
+		for page in outputJson["query"]["pages"]:
+			output.append(outputJson["query"]["pages"][page]["title"])
+		
+		try:
+			DFCONTINUE = outputJson["continue"]["gaicontinue"]
+		except:
+			DFCONTINUE = ''
 		
 	return output
 
