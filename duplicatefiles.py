@@ -27,12 +27,14 @@ def getAllDuplicateFiles(URL):
 	Returns:
 		output (list): a list with all files' page title on Special:ListDuplicatedFiles
 	"""
-
+	
 	PARAMS = {
 	"action": "query",
 	"generator": "allimages",
 	"prop": "duplicatefiles",
-	"format": "json"
+	"dflimit": 2,
+	"format": "json",
+	"rawcontinue": ""
 	}
 
 	session = requests.Session()
@@ -43,19 +45,19 @@ def getAllDuplicateFiles(URL):
 
 	for page in outputJson["query"]["pages"]:
 		output.append(outputJson["query"]["pages"][page]["title"])
-			
+	
 	try:
-		DFCONTINUE = outputJson["continue"]["gaicontinue"]
+		continueValue = outputJson["query-continue"]["allimages"]["gaicontinue"]
 	except:
-		DFCONTINUE = ''
-
-	while (DFCONTINUE):
+		continueValue = ''
+	
+	while continueValue:
 		PARAMS = {
 		"action": "query",
 		"generator": "allimages",
-		"prop": "duplicatefiles",
 		"format": "json",
-		"gaicontinue": DFCONTINUE
+		"gaicontinue": continueValue,
+		"rawcontinue": ""
 		}
 
 		request = session.get(url=URL, params=PARAMS, verify=False)
@@ -65,10 +67,33 @@ def getAllDuplicateFiles(URL):
 			output.append(outputJson["query"]["pages"][page]["title"])
 		
 		try:
-			DFCONTINUE = outputJson["continue"]["gaicontinue"]
+			continueValue = outputJson["query-continue"]["allimages"]["gaicontinue"]
 		except:
-			DFCONTINUE = ''
+			continueValue = ''
+			
+	limit = len(output)
+	i = 0
+	while i < limit:
+		PARAMS = {
+		"action": "query",
+		"titles": output[i],
+		"prop": "duplicatefiles",
+		"format": "json"
+		}
+
+		request = session.get(url=URL, params=PARAMS, verify=False)
+		outputJson = request.json()
+
+		for page in outputJson["query"]["pages"]:
+			try:
+				for item in outputJson["query"]["pages"][page]["duplicatefiles"]:
+					duplicate = item["name"]
+			except:
+				output.remove(output[i])
+				limit -= 1
 		
+		i += 1
+
 	return output
 
 def addTemplate(template, pages):
