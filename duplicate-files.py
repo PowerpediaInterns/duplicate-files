@@ -13,7 +13,7 @@ def getURL():
 		URL (str): API url of the wiki
 	"""
 
-	site = pywikibot.getSite()
+	site = pywikibot.Site()
 	URL = site.protocol() + "://" + site.hostname() + site.scriptpath() + "/api.php"
 	return URL
 
