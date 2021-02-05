@@ -14,7 +14,7 @@ def getURL():
 	"""
 
 	site = pywikibot.Site()
-	URL = site.protocol() + "://" + site.hostname() + site.scriptpath() + "/api.php"
+	URL = site.protocol() + "://" + site.hostname() + site.apipath()
 	return URL
 
 def getAllDuplicateFiles(URL):
