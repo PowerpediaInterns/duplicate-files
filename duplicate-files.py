@@ -2,8 +2,15 @@ import pywikibot
 import requests
 import json
 import urllib3
+import os
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Number of pages to process per run
+BATCH_SIZE = 2
+
+# Name/path of file to store last processed page
+FILE_NAME = "duplicate-files-last.txt"
 
 def getURL():
 	"""
@@ -13,11 +20,11 @@ def getURL():
 		URL (str): API url of the wiki
 	"""
 
-	site = pywikibot.Site()
+	site = pywikibot.getSite()
 	URL = site.protocol() + "://" + site.hostname() + site.apipath()
 	return URL
 
-def getAllDuplicateFiles(URL):
+def getDuplicateFiles(URL):
 	"""
 	Gets a list of all the page titles of files listed on Special:ListDuplicatedFiles.
 
@@ -28,17 +35,28 @@ def getAllDuplicateFiles(URL):
 		output (list): a list with all files' page title on Special:ListDuplicatedFiles
 	"""
 	
+	if not os.path.isfile(FILE_NAME):
+		last = ''
+	else:
+		with open(FILE_NAME) as reader :
+			last = reader.read()
+
+	print("STARTING AT: " + last)
+
 	PARAMS = {
 	"action": "query",
 	"generator": "allimages",
 	"prop": "duplicatefiles",
-	"dflimit": 500,
-	"format": "json"
+	"gailimit": BATCH_SIZE,
+	"format": "json",
+	"gaicontinue": last
 	}
 
 	session = requests.Session()
 	request = session.get(url=URL, params=PARAMS, verify=False)
-	outputJson = request.json()
+	outputJson = request.json()	
+
+	print(json.dumps(outputJson, indent=2))
 
 	try:
 		propContinue = outputJson["continue"]["dfcontinue"]
@@ -59,43 +77,12 @@ def getAllDuplicateFiles(URL):
 		except:
 			continue
 
-	while generatorContinue or propContinue:
-		PARAMS = {
-		"action": "query",
-		"generator": "allimages",
-		"prop": "duplicatefiles",
-		"dflimit": 500,
-		"format": "json",
-		"dfcontinue": propContinue,
-		"gaicontinue": generatorContinue
-		}
-
-		if not propContinue:
-			del PARAMS["dfcontinue"]
-		
-		request = session.get(url=URL, params=PARAMS, verify=False)
-		outputJson = request.json()
-
-		for page in outputJson["query"]["pages"]:
-			try:	
-				duplicate = outputJson["query"]["pages"][page]["duplicatefiles"]
-				output.append(outputJson["query"]["pages"][page]["title"])
-			except:
-				continue
-
+	with open(FILE_NAME, 'w+') as writer:
 		try:
-			propContinue = outputJson["continue"]["dfcontinue"]
+			writer.write(outputJson["continue"]["gaicontinue"])
 		except:
-			propContinue = ''
-
-		try:
-			generatorContinue = outputJson["continue"]["gaicontinue"]
-		except:
-			if propContinue:
-				generatorContinue = generatorContinue
-			else:
-				generatorContinue = ''
-				
+			writer.write('')
+						
 	return output
 
 def addTemplate(template, pages):
@@ -119,4 +106,4 @@ def addTemplate(template, pages):
 			page.save(u"Add " + template)
 
 if __name__ == "__main__":
-	addTemplate("{{Duplicate files}}", getAllDuplicateFiles(getURL()))
+	addTemplate("{{Duplicate files}}", getDuplicateFiles(getURL()))
